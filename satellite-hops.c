@@ -58,7 +58,7 @@ void cleanup()
 
 void printRoute()
 {
-    int i = 0;
+    int i = 0, satellite_count = 0;
 
     printf("#SEED: %s\n", seed);
     while (i < route_index) {
@@ -76,7 +76,11 @@ void printRoute()
         if (i < route_index - 2) {
             printf(",");
         }
+        satellite_count++;
         i++;
+    }
+    if (satellite_count == 0) {
+        printf("No route found.");
     }
     printf("\n");
 }
@@ -172,6 +176,11 @@ void addLocationToRoute(struct Location *loc)
     route_index++;
 }
 
+void removeLocationFromRoute(struct Location *loc)
+{
+    route_index--;
+}
+
 char **getCsvLineFields(char *line)
 {
     char *input = strdup(line);
@@ -231,14 +240,11 @@ void readDataFile()
     fclose(fp);
 }
 
-int findNextLocation()
+int findNextLocation(struct Location *cloc)
 {
-    // Current location is in route's memory address.
-    struct Location *cloc = route[route_index - 1];
     int routeComplete = 0;
 
-    if (isLineOfSight(cloc, end) || route_index >= SATELLITES_COUNT - 1) {
-        addLocationToRoute(end);
+    if (isLineOfSight(cloc, end)) {
         routeComplete = 1;
     }
 
@@ -259,7 +265,10 @@ int findNextLocation()
 
         if (!isInRoute && isLineOfSight(cloc, satellites[i])) {
             addLocationToRoute(satellites[i]);
-              routeComplete = findNextLocation();
+            routeComplete = findNextLocation(satellites[i]);
+            if (!routeComplete) {
+                removeLocationFromRoute(satellites[i]);
+            }
         }
     }
 
@@ -285,7 +294,12 @@ int main(int argc, char *argv[])
     readDataFile();
 
     addLocationToRoute(start);
-    findNextLocation();
+
+    int routeComplete = findNextLocation(start);
+    if (routeComplete) {
+        addLocationToRoute(end);
+    }
+
     printRoute();
 
     cleanup();
