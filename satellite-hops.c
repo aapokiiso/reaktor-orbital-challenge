@@ -5,8 +5,10 @@
 #include <string.h>
 
 #define EARTH_RADIUS 6371
+#define CSV_SEPARATOR ","
+#define SATELLITES_COUNT 20
 
-struct LatLong {
+struct LatLon {
 	float latitude;
 	float longitude;
 };
@@ -19,14 +21,16 @@ struct Coordinates {
 
 struct Satellite {
 	char *id;
-	struct LatLong latlong;
+	struct LatLon latlon;
 	struct Coordinates coords;
+	float altitude;
 };
 
 char *filename;
 float seed;
 struct Coordinates *start;
 struct Coordinates *end;
+struct Satellite **satellites;
 
 void die(const char *message)
 {
@@ -40,16 +44,18 @@ void die(const char *message)
 }
 
 // http://stackoverflow.com/a/1185413
-struct Coordinates *getCoordinatesFromLatLong(float lat, float lon)
+struct Coordinates *getCoordinatesFromLatLon(float lat, float lon, float alt)
 {
 	struct Coordinates *coords = malloc(sizeof(struct Coordinates));
 	if (!coords) {
 		die("Memory error");
 	}
 
-	coords->x = EARTH_RADIUS * cos(lat) * cos(lon);
-	coords->y = EARTH_RADIUS * cos(lat) * sin(lon);
-	coords->z = EARTH_RADIUS * sin(lat);
+	float radius = EARTH_RADIUS + alt;
+
+	coords->x = radius * cos(lat) * cos(lon);
+	coords->y = radius * cos(lat) * sin(lon);
+	coords->z = radius * sin(lat);
 
 	return coords;
 }
@@ -87,7 +93,7 @@ void setStart(float lat, float lon)
 		die("Memory error");
 	}
 
-	start = getCoordinatesFromLatLong(lat, lon);
+	start = getCoordinatesFromLatLon(lat, lon, 0);
 }
 
 void setEnd(float lat, float lon)
@@ -98,7 +104,28 @@ void setEnd(float lat, float lon)
 		die("Memory error");
 	}
 
-	end = getCoordinatesFromLatLong(lat, lon);
+	end = getCoordinatesFromLatLon(lat, lon, 0);
+}
+
+void addSatellite(char *id, float lat, float lon, float alt)
+{
+	struct Satellite *sat = malloc(sizeof(struct Satellite));
+
+	if (!sat) {
+		die("Memory error");
+	}
+
+	sat->id = id;
+	sat->latlon = malloc(sizeof(struct LatLon));
+
+	if (!sat->latlon) {
+		die("Memory error");
+	}
+
+	sat->latlon->latitude = lat;
+	sat->latlon->longitude = lon;
+	sat->altitude = alt;
+	sat->coords = getCoordinatesFromLatLon(lat, lon, alt);
 }
 
 void readDataFile()
@@ -139,6 +166,11 @@ int main(int argc, char *argv[])
 	}
 
 	filename = argv[1];
+	satellites = malloc(SATELLITES_COUNT * sizeof(struct Satellite));
+
+	if (!satellites) {
+		die("Memory error");
+	}
 
 	readDataFile();
 
