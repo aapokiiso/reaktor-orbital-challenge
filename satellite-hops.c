@@ -30,7 +30,7 @@ struct Location {
 };
 
 char *filename;
-float seed;
+char *seed;
 struct Location *start;
 struct Location *end;
 struct Location **satellites;
@@ -60,10 +60,20 @@ void printRoute()
 {
     int i = 0;
 
-    printf("Satellite hops:\n");
+    printf("#SEED: %s\n", seed);
     while (i < route_index) {
-        printf("%s", route[i]->id);
-        if (i < route_index - 1) {
+        char *route_id = route[i]->id;
+
+        // Skip START and END from output.
+        if (strcmp(route_id, "START") == 0 || strcmp(route_id, "END") == 0) {
+            i++;
+            continue;
+        }
+
+        printf("%s", route_id);
+        // Show no comma for 2nd-last route-entry,
+        // since last one is END.
+        if (i < route_index - 2) {
             printf(",");
         }
         i++;
@@ -203,7 +213,8 @@ void readDataFile()
 
         if (i == 0) {
             // First row is seed row, which has prefix "#SEED: "
-            seed = atof(tmp + 7);
+            seed = strdup(tmp + 7);
+            seed[strlen(seed) - 1] = '\0'; // Remove trailing newline.
         } else if (tmp[0] == 'R') {
             // Route row.
             addLocation(START_ID, atof(lineFields[1]), atof(lineFields[2]), 0.0);
